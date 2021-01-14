@@ -1,11 +1,15 @@
 <template>
   <div id="app">
     <div class="container">
-      <h1>Hello</h1>
+      <h1 class="p-4 text-center">
+        Liquidity Provider Simulation
+        <br />
+        <a href="http://eggde.com">EggDex.com</a>
+      </h1>
       <div class="card">
         <div class="card-body">
           <div>
-            <label class="form-label">Fee %</label>
+            <label class="form-label">Swap Fee %</label>
             <input
               type="number"
               class="form-control"
@@ -35,11 +39,21 @@
           </div>
 
           <div class="mt-2">
-            <label class="form-label">Buying Chances</label>
+            <label class="form-label">IDR TO TT Occurence (%)</label>
             <input
               type="number"
               class="form-control"
               v-model="buyChancePct"
+              :disabled="simulationStarted"
+            />
+          </div>
+
+          <div class="mt-2">
+            <label class="form-label">MAX IDR / swap</label>
+            <input
+              type="number"
+              class="form-control"
+              v-model="startingFund_"
               :disabled="simulationStarted"
             />
           </div>
@@ -54,24 +68,26 @@
             <label class="form-label">Simulation Delay (msec)</label>
             <input
               type="number"
-              class="form-control"
+              class="form-control text-center"
               v-model.number="simulationDelay"
             />
           </div>
-          <button
-            class="btn btn-primary"
-            @click="startSimulation"
-            v-if="!simulationStarted"
-          >
-            Start
-          </button>
-          <button
-            class="btn btn-primary"
-            @click="simulationStarted = false"
-            v-else
-          >
-            Stop
-          </button>
+          <div class="mt-2">
+            <button
+              class="btn btn-primary"
+              @click="startSimulation"
+              v-if="!simulationStarted"
+            >
+              Start
+            </button>
+            <button
+              class="btn btn-primary"
+              @click="simulationStarted = false"
+              v-else
+            >
+              Stop
+            </button>
+          </div>
         </div>
       </div>
 
@@ -79,22 +95,30 @@
         <div class="card-body">
           <div class="d-flex text-center">
             <div class="flex-grow-1 text-center bg-warning py-1">
-              <h5 class="mb-0">Major</h5>
-              <strong class="mb-0 d-block">{{
-                collectedFee.major.toFormat(6)
-              }}</strong>
-              <span class="text-danger">{{
-                simulation.major.plus(collectedFee.major).toFormat(6)
-              }}</span>
+              <h5 class="mb-0">TT</h5>
+              <span class="mb-0 d-block">
+                Collected Fee:
+                <strong>{{ collectedFee.major.toFormat(6) }}</strong>
+              </span>
+              <span class="text-danger">
+                Liquidity Balance:
+                <strong>
+                  {{ simulation.major.plus(collectedFee.major).toFormat(6) }}
+                </strong>
+              </span>
             </div>
             <div class="flex-grow-1 text-center bg-success py-1">
-              <h5 class="mb-0">Minor</h5>
-              <strong class="mb-0 d-block">{{
-                collectedFee.minor.toFormat(6)
-              }}</strong>
-              <span class="text-danger">{{
-                simulation.minor.plus(collectedFee.minor).toFormat(6)
-              }}</span>
+              <h5 class="mb-0">IDR</h5>
+              <span class="mb-0 d-block">
+                Collected Fee:
+                <strong>{{ collectedFee.minor.toFormat(6) }}</strong>
+              </span>
+              <span class="text-danger">
+                Liquidity Balance:
+                <strong>
+                  {{ simulation.minor.plus(collectedFee.minor).toFormat(6) }}
+                </strong>
+              </span>
             </div>
           </div>
           <div class="table-responsive">
@@ -187,6 +211,8 @@ export default class App extends Vue {
     minor: new Big(0),
   };
 
+  private startingFund_ = "5000";
+
   simulationStarted = false;
 
   startSimulation() {
@@ -197,7 +223,7 @@ export default class App extends Vue {
       minor: new Big(0),
     };
 
-    const startingFund = new Big(50000); // IDR
+    const startingFund = new Big(this.startingFund_); // IDR
 
     this.$nextTick(async function () {
       this.simulation = {
@@ -219,7 +245,9 @@ export default class App extends Vue {
           const arr = new Uint8Array(1);
           window.crypto.getRandomValues(arr);
           r = arr[0];
-          buy = r < Math.floor(255 * new Big(this.buyChancePct).div(100).toNumber());
+          buy =
+            r <
+            Math.floor(255 * new Big(this.buyChancePct).div(100).toNumber());
         } else {
           r = Math.floor(Math.random() * 10);
           buy = r < 5;
@@ -249,7 +277,9 @@ export default class App extends Vue {
           const tradeAmount = amount.minus(fee);
 
           output = calcOutput(tradeAmount, minor, major);
-          note = `SWAP ${amount.toFormat(6)} IDR to ${output.toFormat(6)} TT`;
+          note = `<span class="text-success">SWAP ${amount.toFormat(
+            6
+          )} IDR to ${output.toFormat(6)} TT</span>`;
           swapPrice = amount.div(output);
 
           major = major.minus(output);
@@ -262,9 +292,9 @@ export default class App extends Vue {
           const tradeAmount = amount.minus(fee);
 
           output = calcOutput(tradeAmount, major, minor);
-          note = `SWAP <strong>${amount.toFormat(
+          note = `<span class="text-danger">SWAP ${amount.toFormat(
             6
-          )} TT</strong> to <strong>${output.toFormat(6)} IDR</strong>`;
+          )} TT to ${output.toFormat(6)} IDR</span>`;
           swapPrice = output.div(amount);
 
           major = major.plus(tradeAmount);
